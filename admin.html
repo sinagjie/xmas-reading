@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎄 館員過卡工作台 - 聖誕精靈出任務</title>
+  <style>
+    :root {
+      --night-top: #0b2948;
+      --night-mid: #14426e;
+      --berry-red: #d94848;
+      --pine-green: #2d7a5f;
+      --pine-green-dark: #22604a;
+      --warm-gold: #f4b942;
+      --text-navy: #12365a;
+      --text-muted: #5c7085;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      color: var(--text-navy);
+      background: linear-gradient(180deg, var(--night-top) 0%, var(--night-mid) 55%, #e8eff7 55%, #f4f8fc 100%);
+      overflow-x: hidden;
+    }
+    #confetti-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; }
+    header { background: rgba(11, 41, 72, 0.92); border-bottom: 2px solid rgba(244, 185, 66, 0.45); color: #ffffff; padding: 16px 20px; }
+    .header-inner { max-width: 720px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .header-title { margin: 0; font-size: 19px; font-weight: 900; }
+    .header-sub { display: block; font-size: 12px; color: #ffe28a; margin-top: 2px; font-weight: 700; }
+    .btn-excel { padding: 10px 16px; border: none; border-radius: 14px; background: var(--pine-green); color: #ffffff; font-size: 14px; font-weight: 800; cursor: pointer; transition: background-color 0.2s; }
+    .btn-excel:hover { background: var(--pine-green-dark); }
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+    .dark-card { background: #102e4d; border: 2px solid #285582; border-radius: 24px; padding: 20px; color: #ffffff; box-shadow: 0 12px 26px rgba(6, 20, 36, 0.25); margin-bottom: 20px; }
+    .dark-card h2 { margin: 0 0 4px; font-size: 17px; font-weight: 800; }
+    .dark-card p { margin: 0 0 14px; font-size: 13px; color: #b8d3ee; }
+    .input-row { display: flex; gap: 10px; }
+    .admin-input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 14px; border: 2px solid #346696; background: #091d33; color: #ffffff; font-size: 16px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-transform: uppercase; outline: none; }
+    .admin-input:focus { border-color: var(--warm-gold); }
+    .btn-load { padding: 12px 20px; border: none; border-radius: 14px; background: var(--warm-gold); color: #10253b; font-size: 15px; font-weight: 900; cursor: pointer; white-space: nowrap; }
+    .btn-load:hover { filter: brightness(1.05); }
+    .panel-card { background: #ffffff; border: 3px solid #dce8f5; border-radius: 26px; padding: 22px; box-shadow: 0 12px 26px rgba(11, 41, 72, 0.14); }
+    .hidden { display: none; }
+    .panel-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 2px dashed #e2e8f0; margin-bottom: 18px; }
+    .small-label { font-size: 12px; font-weight: 800; color: var(--text-muted); }
+    .active-card-id { margin: 4px 0 0; font-size: 24px; font-weight: 900; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--berry-red); }
+    .claim-btn { padding: 10px 16px; border: none; border-radius: 14px; background: var(--pine-green); color: #ffffff; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(45, 122, 95, 0.28); }
+    .claim-btn:hover { background: var(--pine-green-dark); }
+    .status-chip { display: inline-block; padding: 7px 13px; border-radius: 14px; font-size: 12px; font-weight: 800; }
+    .chip-pending { background: #fff4d6; color: #8a5a00; border: 1px solid #f7d57e; }
+    .chip-done { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .task-list-title { margin: 0 0 12px; font-size: 14px; font-weight: 800; color: var(--text-navy); }
+    .admin-task-list { display: flex; flex-direction: column; gap: 10px; }
+    .admin-task-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 2px solid #e2e8f0; background: #ffffff; transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.2s ease; }
+    .admin-task-row.done { background: #eefaf3; border-color: #86efac; }
+    .admin-task-row.pop { animation: rowPop 0.35s ease; }
+    @keyframes rowPop { 0% { transform: scale(1); } 45% { transform: scale(1.02); } 100% { transform: scale(1); } }
+    .admin-task-name { font-size: 14px; font-weight: 800; color: var(--text-navy); }
+    .stamp-btn { padding: 8px 14px; border: none; border-radius: 12px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; background: #e2e8f0; color: #334155; }
+    .stamp-btn.done { background: var(--pine-green); color: #ffffff; box-shadow: 0 3px 10px rgba(45, 122, 95, 0.3); }
+    .sync-status { font-size: 12px; color: #5c7085; margin-top: 12px; text-align: right; }
+    @media (max-width: 520px) { .input-row { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <canvas id="confetti-canvas"></canvas>
+
+  <header>
+    <div class="header-inner">
+      <div>
+        <h1 class="header-title">🎄 館員過卡工作台（聖誕精靈出任務）</h1>
+        <span class="header-sub">兌換門檻：共 5 個任務，完成其中 4 個即可兌換造型氣球</span>
+      </div>
+      <button type="button" class="btn-excel" onclick="exportToExcel()">
+        📊 匯出 Excel 報表
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="dark-card">
+      <h2>刷卡過卡登錄</h2>
+      <p>請使用條碼槍掃描卡片，或手動輸入卡號後按 Enter / 載入卡片</p>
+      <div class="input-row">
+        <input
+          type="text"
+          id="admin-card-input"
+          class="admin-input"
+          placeholder="例如：XMAS101"
+          autocomplete="off"
+          onkeydown="if(event.key === 'Enter') adminLoadCard()"
+        >
+        <button type="button" class="btn-load" onclick="adminLoadCard()">載入卡片</button>
+      </div>
+    </section>
+
+    <section id="admin-panel" class="panel-card hidden">
+      <div class="panel-top">
+        <div>
+          <span class="small-label">當前處理卡號</span>
+          <h2 id="admin-display-card-id" class="active-card-id">XMAS101</h2>
+        </div>
+        <div id="admin-claim-area"></div>
+      </div>
+
+      <h3 class="task-list-title">點擊按鈕幫讀者蓋章（5 個任務中完成 4 個即可兌換造型氣球）：</h3>
+      <div id="admin-task-list" class="admin-task-list"></div>
+      <div id="admin-sync-status" class="sync-status"></div>
+    </section>
+  </main>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwor5xk2ceqsWai6lz68sfnjyoxGmZaC_RtPY1BFzX57QqrDu6sJsdylp2MheEJfhr9/exec';
+
+    const TASKS = [
+      { id: 't1', title: '1. 參加林老師或英語說故事活動', shortTitle: '林老師/英語說故事' },
+      { id: 't2', title: '2. 參加 12/20 早上說故事活動', shortTitle: '12/20早說故事' },
+      { id: 't3', title: '3. 借閱或尋找聖誕節電子書（需出示畫面）', shortTitle: '聖誕電子書' },
+      { id: 't4', title: '4. 於活動期間使用手機 APP 借書功能借閱 3 本書', shortTitle: 'APP借書3本' },
+      { id: 't5', title: '5. 活動期間借書數量達 10 本', shortTitle: '借書達10本' }
+    ];
+
+    const TARGET_GOAL = 4;
+    const TOTAL_TASKS = TASKS.length;
+    let currentAdminCardId = null;
+
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animFrameId = null;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function launchConfetti(originX, originY, count = 48) {
+      const colors = ['#d94848', '#2d7a5f', '#f4b942', '#38bdf8', '#fb7185', '#ffffff'];
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.random() * Math.PI * 2);
+        const speed = 4 + Math.random() * 7;
+        particles.push({
+          x: originX,
+          y: originY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 3.5,
+          size: 6 + Math.random() * 5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 14,
+          shape: Math.random() > 0.35 ? 'ribbon' : 'circle',
+          life: 1,
+          decay: 0.012 + Math.random() * 0.01
+        });
+      }
+      if (!animFrameId) animateConfetti();
+    }
+
+    function animateConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.24;
+        p.vx *= 0.98;
+        p.rotation += p.rotSpeed;
+        p.life -= p.decay;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(p.life, 0);
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        if (p.shape === 'ribbon') {
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size * 0.55);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+
+      particles = particles.filter(p => p.life > 0);
+      if (particles.length > 0) {
+        animFrameId = requestAnimationFrame(animateConfetti);
+      } else {
+        animFrameId = null;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function getDB() {
+      return JSON.parse(localStorage.getItem('lib_xmas_db')) || {};
+    }
+
+    function saveDB(db) {
+      localStorage.setItem('lib_xmas_db', JSON.stringify(db));
+    }
+
+    async function syncRecordToCloud(cardId, record) {
+      const statusEl = document.getElementById('admin-sync-status');
+      if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL') {
+        if (statusEl) statusEl.textContent = '尚未設定 GAS 網址，目前僅存於本機';
+        return;
+      }
+      if (statusEl) statusEl.textContent = '雲端同步中...';
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            cardId: cardId,
+            completed: record.completed || [],
+            claimed: Boolean(record.claimed),
+            claimedAt: record.claimedAt || ''
+          })
+        });
+        const json = await res.json();
+        if (statusEl) {
+          statusEl.textContent = json.ok ? '✓ 已同步至 Google 試算表' : '雲端同步異常，已保留本機紀錄';
+        }
+      } catch (err) {
+        if (statusEl) statusEl.textContent = '雲端連線逾時，已保留本機紀錄';
+      }
+    }
+
+    async function adminLoadCard(cardIdOverride) {
+      const inputEl = document.getElementById('admin-card-input');
+      const cardId = (cardIdOverride || inputEl.value).trim().toUpperCase();
+      if (!cardId) {
+        alert('請先輸入或掃描卡號！');
+        return;
+      }
+
+      currentAdminCardId = cardId;
+      const db = getDB();
+      if (!db[cardId]) {
+        db[cardId] = { completed: [], claimed: false, claimedAt: '' };
+        saveDB(db);
+      }
+
+      renderAdminPanel();
+
+      if (GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL') {
+        try {
+          const res = await fetch(`${GAS_URL}?cardId=${encodeURIComponent(cardId)}`);
+          const json = await res.json();
+          if (json && json.ok && json.record) {
+            const latestDb = getDB();
+            latestDb[cardId] = json.record;
+            saveDB(latestDb);
+            if (currentAdminCardId === cardId) renderAdminPanel();
+          }
+        } catch (err) {
+          // 忽略背景同步錯誤，維持本機畫面
+        }
+      }
+    }
+
+    function renderAdminPanel(justCompletedTaskId = null) {
+      const db = getDB();
+      const data = db[currentAdminCardId];
+      const validIds = TASKS.map(t => t.id);
+      const completedList = (Array.isArray(data.completed) ? data.completed : []).filter(id => validIds.includes(id));
+
+      document.getElementById('admin-display-card-id').textContent = currentAdminCardId;
+
+      const claimArea = document.getElementById('admin-claim-area');
+      const count = completedList.length;
+
+      if (data.claimed) {
+        claimArea.innerHTML = `<span class="status-chip chip-done">🎈 已兌換造型氣球</span>`;
+      } else if (count >= TARGET_GOAL) {
+        claimArea.innerHTML = `<button type="button" class="claim-btn" onclick="claimReward(event)">🎈 達標 (${count}/${TARGET_GOAL})！發放造型氣球</button>`;
+      } else {
+        claimArea.innerHTML = `<span class="status-chip chip-pending">目前 ${count} / ${TARGET_GOAL} 項（共 ${TOTAL_TASKS} 項）</span>`;
+      }
+
+      const listEl = document.getElementById('admin-task-list');
+      listEl.innerHTML = TASKS.map(task => {
+        const isDone = completedList.includes(task.id);
+        const isPop = task.id === justCompletedTaskId;
+        return `
+          <div class="admin-task-row ${isDone ? 'done' : ''} ${isPop ? 'pop' : ''}">
+            <span class="admin-task-name">${task.title}</span>
+            <button type="button" class="stamp-btn ${isDone ? 'done' : ''}" onclick="toggleTaskStatus('${task.id}', event)">
+              ${isDone ? '✓ 已蓋章' : '蓋章解鎖'}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('admin-panel').classList.remove('hidden');
+    }
+
+    function toggleTaskStatus(taskId, evt) {
+      const db = getDB();
+      const data = db[currentAdminCardId];
+      if (!Array.isArray(data.completed)) data.completed = [];
+
+      const idx = data.completed.indexOf(taskId);
+      let isNewlyCompleted = false;
+
+      if (idx > -1) {
+        data.completed.splice(idx, 1);
+      } else {
+        data.completed.push(taskId);
+        isNewlyCompleted = true;
+      }
+
+      saveDB(db);
+      renderAdminPanel(isNewlyCompleted ? taskId : null);
+      syncRecordToCloud(currentAdminCardId, db[currentAdminCardId]);
+
+      if (isNewlyCompleted) {
+        const x = evt && evt.clientX ? evt.clientX : window.innerWidth / 2;
+        const y = evt && evt.clientY ? evt.clientY : window.innerHeight / 2;
+        launchConfetti(x, y, 45);
+      }
+    }
+
+    function claimReward(evt) {
+      if (confirm(`確定要為卡號 ${currentAdminCardId} 兌換「造型氣球」一個嗎？`)) {
+        const db = getDB();
+        db[currentAdminCardId].claimed = true;
+        db[currentAdminCardId].claimedAt = new Date().toLocaleString('zh-TW', { hour12: false });
+        saveDB(db);
+        renderAdminPanel();
+        syncRecordToCloud(currentAdminCardId, db[currentAdminCardId]);
+
+        launchConfetti(window.innerWidth * 0.3, window.innerHeight * 0.35, 60);
+        launchConfetti(window.innerWidth * 0.7, window.innerHeight * 0.35, 60);
+      }
+    }
+
+    async function exportToExcel() {
+      let db = getDB();
+
+      if (GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL') {
+        try {
+          const res = await fetch(GAS_URL);
+          const json = await res.json();
+          if (json && json.ok && json.db) {
+            db = json.db;
+            saveDB(db);
+          }
+        } catch (err) {
+          // 無法連線時改用本機資料匯出
+        }
+      }
+
+      const cardIds = Object.keys(db);
+      if (cardIds.length === 0) {
+        alert('目前尚無任何集章紀錄可匯出！');
+        return;
+      }
+
+      const validIds = TASKS.map(t => t.id);
+      const headers = [
+        '卡號',
+        ...TASKS.map(t => t.shortTitle),
+        '完成任務數',
+        '是否達標(5選4)',
+        '氣球兌換狀態',
+        '兌換時間'
+      ];
+
+      const rows = cardIds.map(cardId => {
+        const data = db[cardId] || { completed: [], claimed: false, claimedAt: '' };
+        const completedList = (Array.isArray(data.completed) ? data.completed : []).filter(id => validIds.includes(id));
+        const taskMarks = TASKS.map(t => completedList.includes(t.id) ? 'V' : '');
+        const count = completedList.length;
+
+        return [
+          cardId,
+          ...taskMarks,
+          count,
+          count >= TARGET_GOAL ? '已達標' : '未達標',
+          data.claimed ? '已兌換' : '未兌換',
+          data.claimed ? (data.claimedAt || '') : ''
+        ];
+      });
+
+      const escapeCsvCell = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const csvContent = [
+        headers.map(escapeCsvCell).join(','),
+        ...rows.map(row => row.map(escapeCsvCell).join(','))
+      ].join('\r\n');
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      link.href = url;
+      link.setAttribute('download', `聖誕精靈出任務統計_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
